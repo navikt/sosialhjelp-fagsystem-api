@@ -16,6 +16,7 @@ Here's a list of features included in this project:
 | Name                                               | Description                                                 |
 | ----------------------------------------------------|------------------------------------------------------------- |
 | [Routing](https://start.ktor.io/p/routing-default) | Allows to define structured routes and associated handlers. |
+| [Fiks IO Client](FIKSIO.md)                        | Kotlin client for Fiks IO secure messaging system           |
 
 ## Building & Running
 
