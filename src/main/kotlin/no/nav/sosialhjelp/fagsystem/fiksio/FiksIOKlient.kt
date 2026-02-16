@@ -1,5 +1,6 @@
 package no.nav.sosialhjelp.fagsystem.fiksio
 
+import org.slf4j.LoggerFactory
 import java.util.UUID
 
 /**
@@ -61,15 +62,14 @@ class FiksIOKlientFactory(
 
 /**
  * Default implementation of FiksIOKlient
- * This is a placeholder implementation - actual implementation would need:
- * - RabbitMQ/AMQP integration
- * - Maskinporten token handling
- * - Message encryption/decryption
- * - HTTP client for API calls
  */
 internal class FiksIOKlientImpl(
     private val konfigurasjon: FiksIOKonfigurasjon
 ) : FiksIOKlient {
+
+    private val logger = LoggerFactory.getLogger(FiksIOKlientImpl::class.java)
+    private val amqpConnection: AmqpConnection = AmqpConnection(konfigurasjon.amqpKonfigurasjon)
+    private var isSubscribed = false
 
     override fun send(
         mottakerKontoId: KontoId,
@@ -83,10 +83,12 @@ internal class FiksIOKlientImpl(
         // This would involve:
         // 1. Getting Maskinporten token
         // 2. Encrypting payload
-        // 3. Sending via AMQP
+        // 3. Publishing via AMQP
         
         val avsenderKontoId = konfigurasjon.kontoKonfigurasjon?.kontoId
             ?: throw IllegalStateException("Sender account not configured")
+        
+        logger.info("Sending message type: {} to: {}", meldingType, mottakerKontoId)
         
         return SendtMelding(
             meldingId = UUID.randomUUID(),
@@ -99,15 +101,44 @@ internal class FiksIOKlientImpl(
     }
 
     override fun newSubscription(handler: (MottattMelding, SvarSender) -> Unit) {
-        // TODO: Implement AMQP subscription
-        // This would involve:
-        // 1. Setting up RabbitMQ connection
-        // 2. Creating queue and binding
-        // 3. Setting up message consumer
-        // 4. Decrypting incoming messages
-        // 5. Calling handler with message and reply sender
+        if (isSubscribed) {
+            logger.warn("Already subscribed to messages")
+            return
+        }
         
-        throw NotImplementedError("Message subscription not yet implemented")
+        val kontoId = konfigurasjon.kontoKonfigurasjon?.kontoId
+            ?: throw IllegalStateException("Account configuration required for subscription")
+        
+        logger.info("Setting up subscription for account: {}", kontoId)
+        
+        // Connect to AMQP server
+        amqpConnection.connect()
+        
+        // Queue name based on account ID (following Fiks IO convention)
+        val queueName = kontoId.toString()
+        
+        // Subscribe to the queue
+        amqpConnection.subscribe(queueName, autoAck = false) { deliveryTag, body, headers ->
+            try {
+                // Parse message from AMQP delivery
+                // TODO: Implement actual message parsing and decryption
+                val mottattMelding = parseMelding(body, headers, kontoId)
+                
+                // Create reply sender
+                val svarSender = createSvarSender(mottattMelding)
+                
+                // Call user handler
+                handler(mottattMelding, svarSender)
+                
+                logger.debug("Successfully processed message with deliveryTag: {}", deliveryTag)
+            } catch (e: Exception) {
+                logger.error("Error processing received message", e)
+                throw e
+            }
+        }
+        
+        isSubscribed = true
+        logger.info("Successfully subscribed to messages for account: {}", kontoId)
     }
 
     override fun lookup(identifikator: String, identifikatorType: String): Konto? {
@@ -117,14 +148,77 @@ internal class FiksIOKlientImpl(
         // 2. Making HTTP call to lookup endpoint
         // 3. Parsing response
         
+        logger.info("Looking up account with {}: {}", identifikatorType, identifikator)
         return null
     }
 
     override fun close() {
-        // TODO: Implement resource cleanup
-        // This would involve:
-        // 1. Closing AMQP connection
-        // 2. Closing HTTP client
-        // 3. Shutting down thread pools
+        logger.info("Closing Fiks IO client")
+        
+        try {
+            amqpConnection.close()
+        } catch (e: Exception) {
+            logger.error("Error closing AMQP connection", e)
+        }
+        
+        isSubscribed = false
+        logger.info("Fiks IO client closed")
+    }
+    
+    /**
+     * Parse received message from AMQP delivery
+     * TODO: Implement actual parsing and decryption
+     */
+    private fun parseMelding(
+        body: ByteArray,
+        headers: Map<String, Any>,
+        mottakerKontoId: KontoId
+    ): MottattMelding {
+        // For now, create a basic message
+        // In a real implementation, this would:
+        // 1. Extract message metadata from headers
+        // 2. Decrypt the message body
+        // 3. Parse attachments
+        
+        val meldingType = headers["meldingType"]?.toString() ?: "unknown"
+        val avsenderKontoId = headers["avsenderKontoId"]?.toString()?.let { 
+            KontoId(UUID.fromString(it)) 
+        } ?: KontoId(UUID.randomUUID())
+        
+        return MottattMelding(
+            meldingId = UUID.randomUUID(),
+            avsenderKontoId = avsenderKontoId,
+            mottakerKontoId = mottakerKontoId,
+            meldingType = meldingType,
+            ttl = null,
+            headere = headers.mapValues { it.value.toString() },
+            klientKorrelasjonId = headers["klientKorrelasjonId"]?.toString(),
+            payload = body,
+            vedlegg = emptyList()
+        )
+    }
+    
+    /**
+     * Create a reply sender for a received message
+     */
+    private fun createSvarSender(mottattMelding: MottattMelding): SvarSender {
+        return object : SvarSender {
+            override fun svar(
+                meldingType: String,
+                payload: ByteArray?,
+                vedlegg: List<Vedlegg>,
+                headere: Map<String, String>
+            ): SendtMelding {
+                // Send reply to the original sender
+                return send(
+                    mottakerKontoId = mottattMelding.avsenderKontoId,
+                    meldingType = meldingType,
+                    payload = payload,
+                    vedlegg = vedlegg,
+                    headere = headere,
+                    klientKorrelasjonId = mottattMelding.klientKorrelasjonId
+                )
+            }
+        }
     }
 }

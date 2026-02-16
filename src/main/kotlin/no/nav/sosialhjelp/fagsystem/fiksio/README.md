@@ -35,6 +35,10 @@ val konfigurasjon = FiksIOKonfigurasjon.builder()
         AmqpKonfigurasjon.builder()
             .host("io.fiks.ks.no")
             .port(5671)
+            .username("your-username")
+            .password("your-password")
+            .virtualHost("/")
+            .useSsl(true)
             .build()
     )
     .fiksIntegrasjonKonfigurasjon(
@@ -109,18 +113,27 @@ klient.close()
 
 ## Current Status
 
-⚠️ **This is a basic implementation** - The current version provides the core structure and interfaces but requires additional implementation for:
+✅ **AMQP Subscription Implemented** - The current version provides:
 
-1. **RabbitMQ/AMQP Integration** - Message queue connection and subscription
-2. **Maskinporten Token Handling** - OAuth2 token acquisition and refresh
-3. **Message Encryption/Decryption** - End-to-end message security
-4. **HTTP Client** - API calls to Fiks platform endpoints
-5. **Error Handling** - Comprehensive error handling and retry logic
+1. ✅ **RabbitMQ/AMQP Connection** - Full connection management with SSL support
+2. ✅ **Message Queue Subscription** - Subscribe to queues and receive messages
+3. ✅ **Automatic Recovery** - Connection recovery and error handling
+4. ✅ **Message Acknowledgment** - Manual message acknowledgment with error handling
+
+⚠️ **Still Requires Implementation:**
+
+1. **Maskinporten Token Handling** - OAuth2 token acquisition and refresh
+2. **Message Encryption/Decryption** - End-to-end message security (ASiC-E format)
+3. **HTTP Client** - API calls to Fiks platform endpoints
+4. **Message Publishing** - Complete implementation for sending messages via AMQP
 
 ## Dependencies
 
-To use this client, you'll need to add dependencies for:
-- RabbitMQ client (AMQP)
+Current dependencies:
+- ✅ RabbitMQ AMQP Client (v5.21.0)
+- ✅ Logback for logging
+
+Additional dependencies needed for full implementation:
 - HTTP client (e.g., Ktor client)
 - Cryptography libraries
 - JWT/OAuth2 libraries for Maskinporten

@@ -83,7 +83,11 @@ data class FiksApiKonfigurasjon(
  */
 data class AmqpKonfigurasjon(
     val host: String,
-    val port: Int
+    val port: Int,
+    val username: String = "guest",
+    val password: String = "guest",
+    val virtualHost: String = "/",
+    val useSsl: Boolean = true
 ) {
     companion object {
         fun builder() = Builder()
@@ -92,11 +96,19 @@ data class AmqpKonfigurasjon(
     class Builder {
         private var host: String = "io.fiks.ks.no"
         private var port: Int = 5671
+        private var username: String = "guest"
+        private var password: String = "guest"
+        private var virtualHost: String = "/"
+        private var useSsl: Boolean = true
 
         fun host(host: String) = apply { this.host = host }
         fun port(port: Int) = apply { this.port = port }
+        fun username(username: String) = apply { this.username = username }
+        fun password(password: String) = apply { this.password = password }
+        fun virtualHost(virtualHost: String) = apply { this.virtualHost = virtualHost }
+        fun useSsl(useSsl: Boolean) = apply { this.useSsl = useSsl }
 
-        fun build() = AmqpKonfigurasjon(host, port)
+        fun build() = AmqpKonfigurasjon(host, port, username, password, virtualHost, useSsl)
     }
 }
 

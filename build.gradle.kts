@@ -17,6 +17,7 @@ kotlin {
 dependencies {
     implementation(libs.bundles.ktor.server)
     implementation(libs.logback.classic)
+    implementation(libs.rabbitmq.amqp.client)
 
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.ktor.server.test.host)

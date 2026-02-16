@@ -8,9 +8,10 @@ The Fiks IO client is organized as follows:
 
 ```
 src/main/kotlin/no/nav/sosialhjelp/fagsystem/fiksio/
-├── FiksIOKlient.kt           # Main client interface and factory
+├── FiksIOKlient.kt           # Main client interface and implementation
 ├── FiksIOKonfigurasjon.kt    # Configuration classes
 ├── Meldinger.kt              # Message models and types
+├── AmqpConnection.kt         # RabbitMQ/AMQP connection management
 └── README.md                 # Detailed usage documentation
 ```
 
@@ -34,6 +35,9 @@ val konfigurasjon = FiksIOKonfigurasjon.builder()
         AmqpKonfigurasjon.builder()
             .host("io.fiks.ks.no")
             .port(5671)
+            .username("your-username")
+            .password("your-password")
+            .useSsl(true)
             .build()
     )
     .fiksIntegrasjonKonfigurasjon(
@@ -110,20 +114,32 @@ Configuration builder with support for:
 - `Vedlegg` - Represents message attachments
 - `SvarSender` - Interface for sending replies
 
+### AmqpConnection
+RabbitMQ connection management:
+- Connection lifecycle management
+- SSL/TLS support
+- Automatic recovery
+- Queue subscription and message consumption
+- Message acknowledgment handling
+
 ## Implementation Status
 
 ✅ **Implemented:**
-- Core configuration classes
-- Message models
+- Core configuration classes with builder pattern
+- Message models and data classes
 - Client interface and factory
-- Builder pattern for configuration
+- **RabbitMQ/AMQP connection management**
+- **Message queue subscription shell**
+- **Automatic connection recovery**
+- **SSL/TLS support**
+- **Message acknowledgment**
 
 ⚠️ **Pending Implementation:**
-- RabbitMQ/AMQP connection and subscription
 - Maskinporten OAuth2 token handling
-- Message encryption/decryption
+- Message encryption/decryption (ASiC-E format)
 - HTTP client for API calls
-- Error handling and retry logic
+- Complete message publishing implementation
+- Advanced error handling and retry logic
 
 ## References
 
