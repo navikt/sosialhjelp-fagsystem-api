@@ -63,12 +63,14 @@ internal class AmqpConnection(
      * 
      * @param queueName Name of the queue to subscribe to
      * @param autoAck Whether to automatically acknowledge messages
+     * @param declareQueue Whether to declare the queue (false for pre-existing Fiks IO queues)
      * @param callback Function to process received messages
      */
     fun subscribe(
         queueName: String,
         autoAck: Boolean = false,
-        callback: (deliveryTag: Long, body: ByteArray, headers: Map<String, Any>) -> Unit
+        declareQueue: Boolean = false,
+        callback: (body: ByteArray, headers: Map<String, Any>) -> Unit
     ) {
         val currentChannel = channel ?: run {
             connect()
@@ -78,14 +80,22 @@ internal class AmqpConnection(
         logger.info("Subscribing to queue: {}", queueName)
         
         try {
-            // Declare the queue (idempotent operation)
-            currentChannel.queueDeclare(
-                queueName,
-                true,  // durable
-                false, // exclusive
-                false, // autoDelete
-                null   // arguments
-            )
+            // Declare the queue if requested (for non-Fiks IO scenarios)
+            // In Fiks IO, queues are pre-configured by the platform
+            if (declareQueue) {
+                currentChannel.queueDeclare(
+                    queueName,
+                    true,  // durable
+                    false, // exclusive
+                    false, // autoDelete
+                    null   // arguments
+                )
+                logger.debug("Queue declared: {}", queueName)
+            } else {
+                // Verify queue exists (passive declaration)
+                currentChannel.queueDeclarePassive(queueName)
+                logger.debug("Queue exists: {}", queueName)
+            }
             
             // Set up consumer
             val deliverCallback = DeliverCallback { consumerTag, delivery ->
@@ -94,7 +104,7 @@ internal class AmqpConnection(
                     
                     logger.debug("Received message from queue: {} (deliveryTag: {})", queueName, delivery.envelope.deliveryTag)
                     
-                    callback(delivery.envelope.deliveryTag, delivery.body, headers)
+                    callback(delivery.body, headers)
                     
                     // Manually acknowledge if not auto-ack
                     if (!autoAck) {

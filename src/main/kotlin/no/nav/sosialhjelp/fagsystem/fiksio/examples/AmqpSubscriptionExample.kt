@@ -44,6 +44,7 @@ object AmqpSubscriptionExample {
             )
             .kontoKonfigurasjon(
                 KontoKonfigurasjon.builder()
+                    // Replace with actual account ID from Fiks IO
                     .kontoId(UUID.fromString("00000000-0000-0000-0000-000000000000"))
                     .privatNokkel("-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----")
                     .build()
@@ -102,9 +103,8 @@ object AmqpSubscriptionExample {
             println("Connection status: ${connection.isConnected()}")
             
             // Subscribe to a test queue
-            connection.subscribe("test-queue") { deliveryTag, body, headers ->
+            connection.subscribe("test-queue", declareQueue = true) { body, headers ->
                 println("Received message:")
-                println("  Delivery Tag: $deliveryTag")
                 println("  Body: ${String(body)}")
                 println("  Headers: $headers")
             }

@@ -118,7 +118,8 @@ internal class FiksIOKlientImpl(
         val queueName = kontoId.toString()
         
         // Subscribe to the queue
-        amqpConnection.subscribe(queueName, autoAck = false) { deliveryTag, body, headers ->
+        // Note: Fiks IO queues are pre-configured by the platform, so we don't declare them
+        amqpConnection.subscribe(queueName, autoAck = false, declareQueue = false) { body, headers ->
             try {
                 // Parse message from AMQP delivery
                 // TODO: Implement actual message parsing and decryption
@@ -129,8 +130,6 @@ internal class FiksIOKlientImpl(
                 
                 // Call user handler
                 handler(mottattMelding, svarSender)
-                
-                logger.debug("Successfully processed message with deliveryTag: {}", deliveryTag)
             } catch (e: Exception) {
                 logger.error("Error processing received message", e)
                 throw e
